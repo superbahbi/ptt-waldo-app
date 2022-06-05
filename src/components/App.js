@@ -1,126 +1,177 @@
-import '../modules/styling-modules/App.css';
+import '../utils/styling-modules/App.css';
 import Navbar from './Navbar';
-import ImgContainer from './ImageContainer';
-import { useEffect, useState } from 'react';
-import { myWaldosArray } from '../firebase/firebase-config';
-import { Marker } from './PointerTarget';
+import ImgContainer from './ImgContainer';
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { grabDocs, sendScoreboardData } from '../firebase/firebase-config';
+import { myImageHandler, returnCondition, gameoverChecker, filterBadWords } from '../utils/helpers/App-helper';
+import Scoreboard from './Scoreboard';
 
 function App() {
 
-  const initPointerState = 
-  {
-    top: 0,
-    left: 0,
-  }
+  // Information for my waldo objects, async data
+  const [myWaldosArray, setMyWaldosArray] = useState([]);
+  const [scoreboardArray, setScoreboardArray] = useState([]);
+  const [profanityArray, setProfanityArray] = useState([]);
+  // Used to change where my target div is via style prop
+  const [pointerState, setPointerState] = useState( { top: 0,left: 0, } );
+  // const goodGame = gameoverChecker();
 
-  const [pointerState, setPointerState] = useState(initPointerState);
-  // An array of my waldo objects, they will be passed down to the corresponding waldoButtonHandler
-  // Each button handler will turn the passed down object's isSelected property to true if the parameters are within the pointer's bounds
-  const [waldoState, setWaldoState] = useState(myWaldosArray);
+  // State that gets filled with 'targeted'
   const [childrenState, setChildrenState] = useState([]);
 
+  // State for navbar's timer
+  const [timerState, setTimerState] = useState([0, 0]);
 
+  // Scoreboard states
+  const [inputState, setInputState] = useState('');
+  const [disableButton, setDisableButton] = useState(false);
+
+  // Used to stop timer in the interval
+  // For some reason clearInterval() was not stopping myInterval
+  const stopTimer = useRef(null);
+
+  // Automatically re-render ONCE async data arrives
   useEffect(() => {
-    const myImage = document.querySelector('#universe113');
-    const myPointer = document.querySelector('#pointer-target');
-    const waldoButtonContainer = document.querySelector('#waldo-button-container');
-    const waldoButtons = document.querySelectorAll('button[data-waldo]');
+    async function fetch() {
+      const waldoData = await grabDocs('waldoRef');
+      const scoreboardData = await grabDocs('scoreRef');
+      const profanityData = await grabDocs('profanityRef')
 
-    function myImageHandler(e) {
-
-     if (waldoButtonContainer.style.visibility === 'visible') {
-        myPointer.style.display = 'none';
-        myPointer.style.visibility = 'hidden';
-        waldoButtonContainer.style.visibility = 'hidden';
-      } else {
-        let foo = e.offsetX - 25;
-        let bar = e.offsetY - 25;
-        myPointer.style.display = 'block';
-        waldoButtonContainer.style.visibility = 'visible';
-        myPointer.style.visibility = 'visible';
-        myPointer.style.left = foo + 'px';
-        myPointer.style.top = bar + 'px';
-        pointerState.top = bar;
-        pointerState.left = foo;
-        setPointerState({...pointerState});
-      }
-
-  }
-
-    function waldoButtonHandler(e) {
-      waldoButtonContainer.style.visibility = 'hidden';
+      setMyWaldosArray(waldoData);
+      setScoreboardArray(scoreboardData);
+      setProfanityArray(profanityData[0].profanity);
     }
+    fetch();
+  }, []);
 
-    waldoButtons.forEach((button) => {
-      button.addEventListener('click', waldoButtonHandler)
-    })
+  // useCallback is used to deal with having to use a  callback function for an effect
+  // Initially everything I have inside my handleStart() was inside useEffect() which caused bugs because of mounting
+  // Putting it in useCallback it will only be invoked when handleStart is invoked.
+  const myTimer = setInterval;
 
-    myImage.addEventListener('click', myImageHandler);
+  const handleStart = useCallback(() => {
 
-    return function cleanup() {
-      myImage.removeEventListener('click', myImageHandler);
-      waldoButtons.forEach((button) => {
-        button.removeEventListener('click', waldoButtonHandler)
-      })
-    }
-  }, [pointerState]);
-  
-
-  // Function used for each "waldo" button. This identifies if a "waldo" (piranha plant, bender, r2d2) has been "hit" or not.
-  function waldoButtonHandler(char) {
-    const foo = (waldo) => {
-      if (!waldo) {
-        console.log('has not loaded');
+    myTimer(() => {
+      if (stopTimer.current === true) {
+        clearInterval(myTimer);
         return;
-      } else {
-        return (pointerState.top >= (waldo.top - 20) && pointerState.top <= (waldo.top + 20) 
-        && pointerState.left >= (waldo.left - 20) && pointerState.left <= (waldo.left + 20))
       }
+      
+      setTimerState((prevState) => {
+        return [prevState[0] + 1, prevState[1]];
+      });
+    }, 1000);
+    
+    return () => {
+      clearInterval(myTimer);
     };
 
-    const [piranhaPlant, r2D2, bender] = waldoState;
-
-    if (char === 'piranha plant') {
-      if (foo(piranhaPlant, 20, 30)) {
-
-        if (!piranhaPlant.isSelected) {
-          setChildrenState((prevState) => [...prevState, 
-            <Marker myKey={piranhaPlant.waldo} markerName={piranhaPlant.waldo} left={pointerState.left} top={pointerState.top} />]);
-            console.log(childrenState)
-        }
-
-        piranhaPlant.changePropValue(piranhaPlant, 'isSelected', true);
-      } 
-    } else if (char === 'bender') {
-      if (foo(bender, 20, 30)) {
-        if (!bender.isSelected) {
-          setChildrenState([...childrenState, 
-          <Marker myKey={bender.waldo} markerName={bender.waldo} left={pointerState.left} top={pointerState.top} />]);
-        }
-
-        bender.changePropValue(bender, 'isSelected', true);
-      } 
-      
-    } else if (char === 'R2D2') {
-      if (foo(r2D2, 20, 30)) {
-        if (!r2D2.isSelected) {
-          setChildrenState([...childrenState, 
-          <Marker myKey={r2D2.waldo} markerName={r2D2.waldo} left={pointerState.left} top={pointerState.top} />]);
-        }
-
-        r2D2.changePropValue(r2D2, 'isSelected', true);
-      }
-      
-    }
-    
-    setWaldoState([...waldoState]);
-    console.log(waldoState)
-  }
+  }, [myTimer, ]);
   
+  // Used to build a proper minute & second timer
+  useEffect(() => {
+    if (timerState[0] === 59) {
+      setTimerState((prevState) => {
+          return [prevState[0] = 0, prevState[1] + 1];
+      })
+    };
+    // Once stopTimer becomes true handleStart's interval stops
+    stopTimer.current = gameoverChecker(myWaldosArray);
+  }, [timerState, myWaldosArray]);
+
+  // Used to start my app's timer
+  function startButtonHandler(e) {
+    if (!timerState[0] && !timerState[1]) {
+      handleStart();
+    }
+  }
+
+  // When a user clicks on the image myImageHandler is called
+  function universeImgHandler(e) {
+    const originalEvent = e.nativeEvent;
+    const pointerTarget = e.target.parentElement.children[1];
+    const waldoButtonContainer = pointerTarget.children[0];
+
+    myImageHandler(waldoButtonContainer, pointerTarget, pointerState, setPointerState, originalEvent);
+  }
+
+  // When a user clicks on a waldo button, a border will appear around a "waldo" if they've been properly selected
+  function waldoButtonHandler(data, e) {
+    const waldoButtonContainer = e.target.parentElement;
+
+    waldoButtonContainer.style.visibility = 'hidden';
+    if (returnCondition(data, pointerState)) {
+      setChildrenState((prevState) => [...prevState, data]);
+      data.changePropValue(data, 'isSelected', true);
+      return;
+    }
+      return null;
+  };
+
+  function inputHandler(e) {
+    const input = e.target;
+    setInputState((prevState) => {
+      return prevState = input.value;
+    });
+  }
+
+   async function submitHandler(e) {
+    // If user enters a blank value in the input this is prompted
+    if (!inputState) {
+      // eslint-disable-next-line no-restricted-globals
+      if (!confirm('Are you sure?')) {
+        return;
+      };
+    
+      sendScoreboardData('Anonymous', timerState);
+      const scoreboardData = await grabDocs('scoreRef');
+      setScoreboardArray(scoreboardData);
+      setDisableButton(true);
+      return;
+    }
+    // If the input value is in my profanityArray then return;
+    const filteredState = filterBadWords(profanityArray, inputState);
+    if (!filteredState) {
+      return;
+    } else {
+      sendScoreboardData(`${inputState}`, timerState);
+      const scoreboardData = await grabDocs('scoreRef');
+      setScoreboardArray(scoreboardData);
+      setDisableButton(true);
+    }
+
+  };
+
   return (
     <div className="App" data-testid='app' >
-      <Navbar />
-      <ImgContainer characters={waldoState} buttonHandler={waldoButtonHandler} clickCoords={pointerState} children={childrenState} />
+
+      <Navbar 
+      timer={timerState}  
+      buttonHandler={startButtonHandler} 
+      characters={myWaldosArray} 
+      gameover={gameoverChecker} 
+      />
+
+      <ImgContainer 
+      characters={myWaldosArray} 
+      startCon={timerState} 
+      buttonHandler={waldoButtonHandler} 
+      clickCoords={pointerState} 
+      children={childrenState} 
+      imgHandler={universeImgHandler} 
+      />
+
+      {gameoverChecker(myWaldosArray) ? 
+      <Scoreboard 
+      inputValue={inputState} 
+      inputHandler={inputHandler} 
+      submitHandler={submitHandler} 
+      userData={scoreboardArray} 
+      disableButton={disableButton} 
+      /> 
+      :
+      null}
+      
     </div>
   );
 }

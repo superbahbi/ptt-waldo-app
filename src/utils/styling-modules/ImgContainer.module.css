@@ -1,0 +1,30 @@
+.universe-container {
+  object-fit: cover;
+}
+
+.universe-image {
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.waldo-container {
+  visibility: hidden;
+  position: absolute;
+  left: 60px;
+  top: 60px;
+
+  display: grid;
+  gap: 10px;
+  background-color: black;
+  height: fit-content;
+  width: fit-content;
+  padding: 10px;
+  border: 1px solid white;
+}
+
+.waldo-container > button {
+  font-family: monoSpace;
+  border: 2px solid red;
+  color: white;
+  background: none;
+}

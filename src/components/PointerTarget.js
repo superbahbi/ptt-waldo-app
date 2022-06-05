@@ -1,18 +1,10 @@
 import React from "react";
-import styles from '../modules/styling-modules/ImageContainer.module.css'
+import styles from '../utils/styling-modules/ImgContainer.module.css';
 
-function PointerTarget(props) {
+function PointerTarget({ buttonHandler, characters }) {
   // const myButtonHandler = props.buttonHandler;
-  const forPiranha = function () {
-    props.buttonHandler('piranha plant');
-  }
-  const forBender = function () {
-    props.buttonHandler('bender');
-  }
-  const forR2D2 = function () {
-    props.buttonHandler('R2D2');
-  }
-  
+  const [piranhaPlant, r2D2, bender] = characters;
+
   const initialPointerState = {
     display: 'none',
     position: 'absolute',
@@ -23,33 +15,32 @@ function PointerTarget(props) {
 
   return (
     <div id="pointer-target" style={initialPointerState} data-pointer-target>
-      <div id="waldo-button-container" className={styles['waldo-container']}>
-        <button onClick={forPiranha} data-waldo>Piranha Plant</button>
-        <button onClick={forBender} data-waldo>Bender</button>
-        <button onClick={forR2D2} data-waldo>R2D2</button>
+      <div id="waldo-button-container" className={`${styles['waldo-container']} `} >
+        <button onClick={(e) => buttonHandler(piranhaPlant, e)} data-waldo>Piranha Plant</button>
+        <button onClick={(e) => buttonHandler(r2D2, e)} data-waldo>R2D2</button>
+        <button onClick={(e) => buttonHandler(bender, e)} data-waldo>Bender</button>
       </div>
-      
     </div>
   )
 }
 
 export function Marker(props) {
-  console.log(props);
-  const { myKey, markerName, left, top } = props;
+  const { markerName, left, top } = props;
 
   const initialMarkerState = {
     position: 'absolute',
     width: '40px',
     height: '40px',
-    border: '3px solid green',
+    border: '5px solid blue',
+    marginLeft: '5px',
+    marginTop: '5px',
+    zIndex: '0',
     left,
     top,
   };
 
-  const myUniqueKey = markerName;
-
   return (
-    <div key={myUniqueKey} style={initialMarkerState} data-marker={markerName}></div>
+    <div style={initialMarkerState} data-marker={markerName}></div>
   )
 }
 
